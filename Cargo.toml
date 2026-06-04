@@ -1,0 +1,15 @@
+[package]
+name = "apm-forensic"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+description = "Forensic-grade Apple Partition Map (APM) reader — Driver Descriptor Map + partition entries (name, type, start, count) from a byte buffer"
+repository = "https://github.com/SecurityRonin/apm-forensic"
+keywords = ["forensics", "apple", "partition", "apm", "dfir"]
+categories = ["parser-implementations", "filesystem"]
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"
