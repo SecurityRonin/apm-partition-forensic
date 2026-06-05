@@ -35,10 +35,10 @@ fn report_includes_header_and_partitions() {
 
 #[test]
 fn report_renders_anomaly_codes() {
-    // A single-entry map declaring map_count=1 is self-consistent, so force an
-    // anomaly: claim map_count=5 but supply only 1 entry → MapCountMismatch.
+    // Force an out-of-bounds partition: device is 8 blocks but the entry claims
+    // 100 blocks starting at block 1 → end block 100 > 8 → APM-PART-OOB.
     let mut disk = build_apm();
-    disk[512 + 4..512 + 8].copy_from_slice(&5u32.to_be_bytes());
+    disk[512 + 12..512 + 16].copy_from_slice(&100u32.to_be_bytes());
     let a = analyse(&disk).unwrap();
     let r = text_report(&a);
     assert!(r.contains("APM-"), "anomaly codes should appear:\n{r}");

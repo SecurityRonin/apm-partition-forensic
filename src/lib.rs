@@ -15,6 +15,7 @@
 //! [`findings`] module.
 
 pub mod findings;
+pub mod report;
 
 mod analyse;
 pub use analyse::{analyse, analyse_reader};
