@@ -46,6 +46,15 @@ fn kinds(d: &[u8]) -> Vec<AnomalyKind> {
 // ── Real data ────────────────────────────────────────────────────────────────
 
 #[test]
+fn analyse_reader_matches_byte_api() {
+    use std::io::Cursor;
+    let data = real_map();
+    let a = apm_forensic::analyse_reader(&mut Cursor::new(&data), 1 << 20).unwrap();
+    assert_eq!(a.partitions.len(), 2);
+    assert!(a.anomalies.is_empty());
+}
+
+#[test]
 fn real_apm_is_clean() {
     let a = analyse(&real_map()).unwrap();
     assert_eq!(a.partitions.len(), 2);
