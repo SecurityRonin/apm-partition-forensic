@@ -61,6 +61,10 @@ pub enum AnomalyKind {
     /// A partition's `pmPartType` is not a recognised APM type — possibly a
     /// custom or hidden partition.
     UnknownPartitionType { index: usize, type_name: String },
+    /// A block range between two partitions is described by no entry. An APM
+    /// covers the whole device (free space is an `Apple_Free` entry), so an
+    /// interior gap is unaccounted/hidden space.
+    UnmappedRegion { start_block: u32, end_block: u32 },
 }
 
 impl AnomalyKind {
@@ -73,7 +77,7 @@ impl AnomalyKind {
             K::PartitionOutOfBounds { .. }
             | K::ResidualEntry { .. }
             | K::NoPartitionMapEntry => Severity::High,
-            K::MapCountMismatch { .. } => Severity::Medium,
+            K::MapCountMismatch { .. } | K::UnmappedRegion { .. } => Severity::Medium,
             K::ZeroLengthPartition { .. } => Severity::Low,
             K::UnknownPartitionType { .. } => Severity::Info,
         }
@@ -91,6 +95,7 @@ impl AnomalyKind {
             K::ZeroLengthPartition { .. } => "APM-PART-ZEROLEN",
             K::NoPartitionMapEntry => "APM-NO-MAP-ENTRY",
             K::UnknownPartitionType { .. } => "APM-PART-UNKNOWN",
+            K::UnmappedRegion { .. } => "APM-UNMAPPED",
         }
     }
 
@@ -129,6 +134,13 @@ impl AnomalyKind {
             K::UnknownPartitionType { index, type_name } => {
                 format!("Partition {index}: unrecognised type \"{type_name}\" — possibly custom or hidden")
             }
+            K::UnmappedRegion {
+                start_block,
+                end_block,
+            } => format!(
+                "Blocks {start_block}–{end_block} are described by no partition entry — \
+                 unaccounted/hidden space"
+            ),
         }
     }
 }

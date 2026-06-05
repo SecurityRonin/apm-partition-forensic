@@ -86,6 +86,27 @@ pub fn analyse(data: &[u8]) -> Result<ApmAnalysis, Error> {
         }
     }
 
+    // ── Unmapped interior regions (hidden space) ────────────────────────────
+    // An APM covers the whole device; a gap between adjacent partitions is
+    // unaccounted space. Trailing/leading gaps are not flagged (often benign).
+    let mut extents: Vec<(u32, u32)> = map
+        .partitions
+        .iter()
+        .filter(|p| p.block_count > 0)
+        .map(|p| (p.start_block, p.end_block()))
+        .collect();
+    extents.sort_unstable();
+    for pair in extents.windows(2) {
+        let (_, prev_end) = pair[0];
+        let (next_start, _) = pair[1];
+        if next_start > prev_end.saturating_add(1) {
+            anomalies.push(Anomaly::new(AnomalyKind::UnmappedRegion {
+                start_block: prev_end + 1,
+                end_block: next_start - 1,
+            }));
+        }
+    }
+
     // ── Residual entry: a PM signature beyond the declared map count ─────────
     if let Some(first) = map.partitions.first() {
         let declared = first.map_count as usize;
