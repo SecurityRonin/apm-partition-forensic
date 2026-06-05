@@ -17,18 +17,19 @@
 pub mod findings;
 
 mod analyse;
-pub use analyse::analyse;
+pub use analyse::{analyse, analyse_reader};
 pub use findings::{Anomaly, AnomalyKind, ApmAnalysis, Severity};
 
-/// Crate-level error type. (Implemented without `thiserror` to keep the crate
-/// dependency-free.)
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Crate-level error type. (Manual impl — no `thiserror` dependency.)
+#[derive(Debug)]
 pub enum Error {
     /// The buffer did not begin with the Driver Descriptor Map `ER` signature,
     /// or the first partition entry lacked the `PM` signature.
     NotApm,
     /// The buffer was shorter than the structure it was asked to hold.
     TooShort { need: usize, got: usize },
+    /// I/O failure while reading the disk image (from [`analyse_reader`]).
+    Io(std::io::Error),
 }
 
 impl core::fmt::Display for Error {
@@ -38,11 +39,25 @@ impl core::fmt::Display for Error {
             Error::TooShort { need, got } => {
                 write!(f, "buffer too short: need {need} bytes, got {got}")
             }
+            Error::Io(e) => write!(f, "I/O error: {e}"),
         }
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Io(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e)
+    }
+}
 
 /// Driver Descriptor Map signature (`ER`).
 const SIG_DDM: &[u8; 2] = b"ER";

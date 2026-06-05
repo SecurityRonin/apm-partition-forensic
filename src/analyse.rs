@@ -1,10 +1,40 @@
 //! Orchestration: the public [`analyse`] entry point and its forensic checks.
 
+use std::io::{ErrorKind, Read, Seek, SeekFrom};
+
 use crate::findings::{Anomaly, AnomalyKind, ApmAnalysis};
 use crate::{parse, Error};
 
 /// Partition map entry signature (`PM`).
 const SIG_PM: &[u8; 2] = b"PM";
+
+/// Analyse an Apple Partition Map read from a seekable image.
+///
+/// Reads up to `max_bytes` from the start (the APM lives in the first few
+/// blocks, so a small cap such as 1 MiB suffices), then delegates to [`analyse`].
+/// Composes with the container crates (`ewf`, `dmg`, `vhd`, …) that expose a
+/// `Read + Seek` view of a disk image.
+///
+/// # Errors
+/// [`Error::Io`] on a read/seek failure, or the errors of [`analyse`].
+pub fn analyse_reader<R: Read + Seek>(
+    reader: &mut R,
+    max_bytes: usize,
+) -> Result<ApmAnalysis, Error> {
+    reader.seek(SeekFrom::Start(0))?;
+    let mut buf = vec![0u8; max_bytes];
+    let mut filled = 0;
+    while filled < max_bytes {
+        match reader.read(&mut buf[filled..]) {
+            Ok(0) => break,
+            Ok(n) => filled += n,
+            Err(e) if e.kind() == ErrorKind::Interrupted => {}
+            Err(e) => return Err(Error::Io(e)),
+        }
+    }
+    buf.truncate(filled);
+    analyse(&buf)
+}
 
 /// Perform a full forensic analysis of an Apple Partition Map.
 ///
