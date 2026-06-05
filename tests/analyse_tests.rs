@@ -103,6 +103,22 @@ fn residual_entry_flagged() {
 }
 
 #[test]
+fn missing_partition_map_self_entry_flagged() {
+    // No Apple_partition_map entry — the map must describe itself.
+    let d = build(1000, &[ent("Apple_HFS", 64, 100, 1)]);
+    assert!(kinds(&d).iter().any(|a| matches!(a, AnomalyKind::NoPartitionMapEntry)));
+}
+
+#[test]
+fn unknown_partition_type_flagged() {
+    let d = build(
+        1000,
+        &[ent("Apple_partition_map", 1, 63, 2), ent("Sneaky_Hidden_Type", 64, 100, 2)],
+    );
+    assert!(kinds(&d).iter().any(|a| matches!(a, AnomalyKind::UnknownPartitionType { .. })));
+}
+
+#[test]
 fn zero_length_partition_flagged() {
     let d = build(1000, &[ent("Apple_Free", 64, 0, 1)]);
     assert!(kinds(&d).iter().any(|a| matches!(a, AnomalyKind::ZeroLengthPartition { .. })));
