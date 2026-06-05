@@ -9,6 +9,40 @@
 //!
 //! This module reads the map for *detection and partition geometry* (name,
 //! type, start block, block count).  Validated against a real `hdiutil` APM.
+//!
+//! For forensic anomaly detection (overlaps, out-of-bounds, map-count
+//! inconsistency, residual/hidden entries) see [`analyse`] and the
+//! [`findings`] module.
+
+pub mod findings;
+
+mod analyse;
+pub use analyse::analyse;
+pub use findings::{Anomaly, AnomalyKind, ApmAnalysis, Severity};
+
+/// Crate-level error type. (Implemented without `thiserror` to keep the crate
+/// dependency-free.)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    /// The buffer did not begin with the Driver Descriptor Map `ER` signature,
+    /// or the first partition entry lacked the `PM` signature.
+    NotApm,
+    /// The buffer was shorter than the structure it was asked to hold.
+    TooShort { need: usize, got: usize },
+}
+
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Error::NotApm => f.write_str("not an Apple Partition Map (missing ER/PM signature)"),
+            Error::TooShort { need, got } => {
+                write!(f, "buffer too short: need {need} bytes, got {got}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 /// Driver Descriptor Map signature (`ER`).
 const SIG_DDM: &[u8; 2] = b"ER";
@@ -19,6 +53,7 @@ const MAX_PARTITIONS: u32 = 256;
 
 /// One Apple Partition Map entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ApmPartition {
     /// Partition name (`pmPartName`), e.g. `"disk image"`.
     pub name: String,
@@ -28,13 +63,31 @@ pub struct ApmPartition {
     pub start_block: u32,
     /// Partition length in blocks (`pmPartBlkCnt`).
     pub block_count: u32,
+    /// Number of blocks in the partition map, as recorded by *this* entry
+    /// (`pmMapBlkCnt`). Every entry should report the same value.
+    pub map_count: u32,
+    /// Partition status bits (`pmPartStatus`).
+    pub status: u32,
+}
+
+impl ApmPartition {
+    /// Inclusive last block of this partition, saturating on overflow.
+    #[must_use]
+    pub fn end_block(&self) -> u32 {
+        self.start_block
+            .saturating_add(self.block_count)
+            .saturating_sub(1)
+    }
 }
 
 /// A parsed Apple Partition Map.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ApplePartitionMap {
     /// Device block size in bytes (from the Driver Descriptor Map).
     pub block_size: u32,
+    /// Number of blocks on the device (`sbBlkCount` in the Driver Descriptor Map).
+    pub device_block_count: u32,
     /// Partition entries in map order.
     pub partitions: Vec<ApmPartition>,
 }
@@ -58,6 +111,7 @@ pub fn parse(data: &[u8]) -> Option<ApplePartitionMap> {
         return None;
     }
     let block_size = u32::from(be16(&data[2..4]));
+    let device_block_count = be32(&data[4..8]);
     let bs = block_size as usize;
     if bs == 0 {
         return None;
@@ -72,18 +126,21 @@ pub fn parse(data: &[u8]) -> Option<ApplePartitionMap> {
     let mut partitions = Vec::new();
     for i in 0..map_count {
         let off = bs * (1 + i as usize);
-        if data.len() < off + 80 || &data[off..off + 2] != SIG_PM {
+        if data.len() < off + 92 || &data[off..off + 2] != SIG_PM {
             break;
         }
         partitions.push(ApmPartition {
+            map_count: be32(&data[off + 4..off + 8]),
             start_block: be32(&data[off + 8..off + 12]),
             block_count: be32(&data[off + 12..off + 16]),
             name: cstr(&data[off + 16..off + 48]),
             type_name: cstr(&data[off + 48..off + 80]),
+            status: be32(&data[off + 88..off + 92]),
         });
     }
     Some(ApplePartitionMap {
         block_size,
+        device_block_count,
         partitions,
     })
 }
