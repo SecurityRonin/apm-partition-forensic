@@ -119,6 +119,17 @@ fn unknown_partition_type_flagged() {
 }
 
 #[test]
+fn unmapped_region_between_partitions_flagged() {
+    // Blocks 64..99 are described by no partition — APM covers the whole disk
+    // (free space is an Apple_Free entry), so an interior gap is hidden space.
+    let d = build(
+        1000,
+        &[ent("Apple_partition_map", 1, 63, 2), ent("Apple_HFS", 100, 100, 2)],
+    );
+    assert!(kinds(&d).iter().any(|a| matches!(a, AnomalyKind::UnmappedRegion { .. })));
+}
+
+#[test]
 fn zero_length_partition_flagged() {
     let d = build(1000, &[ent("Apple_Free", 64, 0, 1)]);
     assert!(kinds(&d).iter().any(|a| matches!(a, AnomalyKind::ZeroLengthPartition { .. })));
