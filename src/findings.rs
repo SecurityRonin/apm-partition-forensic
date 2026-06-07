@@ -8,7 +8,7 @@ use core::fmt;
 
 use crate::ApmPartition;
 
-/// The canonical 5-level severity scale, shared across every SecurityRonin
+/// The canonical 5-level severity scale, shared across every `SecurityRonin`
 /// analyzer via [`forensicnomicon::report`].
 pub use forensicnomicon::report::Severity;
 
@@ -21,6 +21,64 @@ impl forensicnomicon::report::Observation for Anomaly {
     }
     fn note(&self) -> String {
         self.note.clone()
+    }
+    fn evidence(&self) -> Vec<forensicnomicon::report::Evidence> {
+        use forensicnomicon::report::{Evidence, Location};
+        // APM addresses everything in logical device blocks.
+        let at = |field: String, value: String, block: u32| Evidence {
+            field,
+            value,
+            location: Some(Location::Lba(u64::from(block))),
+        };
+        match &self.kind {
+            AnomalyKind::PartitionOutOfBounds {
+                index,
+                last_block,
+                device_last_block,
+            } => vec![at(
+                format!("partition {index} last block"),
+                format!("{last_block} past device end {device_last_block}"),
+                *last_block,
+            )],
+            AnomalyKind::ResidualEntry { block } => vec![at(
+                "residual map entry".to_string(),
+                format!("block {block}"),
+                *block,
+            )],
+            AnomalyKind::UnmappedRegion {
+                start_block,
+                end_block,
+            } => vec![at(
+                "unmapped region".to_string(),
+                format!("blocks {start_block}..={end_block}"),
+                *start_block,
+            )],
+            AnomalyKind::MapCountMismatch {
+                index,
+                found,
+                expected,
+            } => vec![Evidence {
+                field: format!("map entry {index} count"),
+                value: format!("found {found}, expected {expected}"),
+                location: None,
+            }],
+            AnomalyKind::OverlappingPartitions { a, b } => vec![Evidence {
+                field: "partitions".to_string(),
+                value: format!("{a} & {b}"),
+                location: None,
+            }],
+            AnomalyKind::ZeroLengthPartition { index } => vec![Evidence {
+                field: "partition".to_string(),
+                value: index.to_string(),
+                location: None,
+            }],
+            AnomalyKind::UnknownPartitionType { index, type_name } => vec![Evidence {
+                field: format!("partition {index} type"),
+                value: type_name.clone(),
+                location: None,
+            }],
+            AnomalyKind::NoPartitionMapEntry => Vec::new(),
+        }
     }
 }
 
