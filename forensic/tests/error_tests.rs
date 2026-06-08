@@ -1,7 +1,7 @@
 //! Coverage for the crate `Error` type: Display, `From<io::Error>`, and source.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use apm_forensic::Error;
+use apm_partition_forensic::Error;
 use std::error::Error as _;
 
 #[test]

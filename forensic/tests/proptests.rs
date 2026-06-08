@@ -12,8 +12,8 @@ proptest! {
     /// any input — `analyse_reader` is only a faithful wrapper around `analyse`.
     #[test]
     fn byte_and_reader_apis_agree(data in proptest::collection::vec(any::<u8>(), 0..8192)) {
-        let direct = apm_forensic::analyse(&data);
-        let reader = apm_forensic::analyse_reader(&mut Cursor::new(&data), 1 << 20);
+        let direct = apm_partition_forensic::analyse(&data);
+        let reader = apm_partition_forensic::analyse_reader(&mut Cursor::new(&data), 1 << 20);
         match (direct, reader) {
             (Ok(a), Ok(b)) => {
                 prop_assert_eq!(a.block_size, b.block_size);
@@ -34,7 +34,7 @@ proptest! {
     /// No parsed partition reports an end block before its start block.
     #[test]
     fn end_block_never_precedes_start(data in proptest::collection::vec(any::<u8>(), 512..8192)) {
-        if let Ok(a) = apm_forensic::analyse(&data) {
+        if let Ok(a) = apm_partition_forensic::analyse(&data) {
             for p in &a.partitions {
                 if p.block_count > 0 {
                     prop_assert!(p.end_block() >= p.start_block);

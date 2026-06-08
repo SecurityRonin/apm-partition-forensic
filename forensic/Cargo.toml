@@ -15,9 +15,6 @@ categories = ["parser-implementations", "filesystem"]
 # The crates.io name `apm-forensic` is retired in favour of the uniform
 # `apm-partition-*` scheme; the import path stays `use apm_forensic::…` so
 # downstream code and tests are unaffected by the package rename.
-[lib]
-name = "apm_forensic"
-
 [dependencies]
 apm = { version = "0.4.1", path = "../core", package = "apm-partition-core" }
 serde = { version = "1", features = ["derive"], optional = true }

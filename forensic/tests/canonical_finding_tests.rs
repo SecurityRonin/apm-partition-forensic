@@ -2,7 +2,7 @@
 //! model via the `Observation` producer trait.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use apm_forensic::{Anomaly, AnomalyKind};
+use apm_partition_forensic::{Anomaly, AnomalyKind};
 use forensicnomicon::report::{Observation, Source};
 
 #[test]

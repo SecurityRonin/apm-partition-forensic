@@ -3,7 +3,7 @@
 // image (DDM + partition map, block size 512, Apple_partition_map + Apple_HFS).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use apm_forensic as apm;
+use apm_partition_forensic as apm;
 
 fn real_map() -> Vec<u8> {
     std::fs::read(concat!(

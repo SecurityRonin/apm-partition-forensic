@@ -1,7 +1,7 @@
 //! Forensic analysis of the Apple Partition Map.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use apm_forensic::{analyse, AnomalyKind, Error};
+use apm_partition_forensic::{analyse, AnomalyKind, Error};
 
 fn real_map() -> Vec<u8> {
     std::fs::read(concat!(
@@ -64,7 +64,7 @@ fn kinds(d: &[u8]) -> Vec<AnomalyKind> {
 fn analyse_reader_matches_byte_api() {
     use std::io::Cursor;
     let data = real_map();
-    let a = apm_forensic::analyse_reader(&mut Cursor::new(&data), 1 << 20).unwrap();
+    let a = apm_partition_forensic::analyse_reader(&mut Cursor::new(&data), 1 << 20).unwrap();
     assert_eq!(a.partitions.len(), 2);
     assert!(a.anomalies.is_empty());
 }
