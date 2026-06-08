@@ -1,4 +1,4 @@
-//! Fuzz target: feed arbitrary bytes as a disk image to `analyse`.
+//! Fuzz target: full analyse pipeline on arbitrary bytes.
 //!
 //! Invariants: never panics; returns `Ok` or a well-typed `Err`; all fields of
 //! `ApmAnalysis` are accessible without panic.

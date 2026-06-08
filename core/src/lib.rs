@@ -1,4 +1,4 @@
-//! Apple Partition Map (APM) detection.
+//! Apple Partition Map (APM) reader.
 //!
 //! Apple hybrid optical discs carry an Apple Partition Map so a Mac sees the
 //! disc's partitions (typically an `Apple_HFS` slice alongside the ISO 9660
@@ -7,18 +7,15 @@
 //! `ER`, carrying the block size), and blocks 1.. are partition entries
 //! (signature `PM`), the first of which reports how many entries the map holds.
 //!
-//! This module reads the map for *detection and partition geometry* (name,
+//! This crate reads the map for *detection and partition geometry* (name,
 //! type, start block, block count).  Validated against a real `hdiutil` APM.
 //!
 //! For forensic anomaly detection (overlaps, out-of-bounds, map-count
-//! inconsistency, residual/hidden entries) see [`analyse`] and the
-//! [`findings`] module.
+//! inconsistency, residual/hidden entries) see the `apm-partition-forensic` crate.
 
-pub mod findings;
-
-mod analyse;
-pub use analyse::{analyse, analyse_reader};
-pub use findings::{Anomaly, AnomalyKind, ApmAnalysis, Severity};
+// Production code is panic-free (no unwrap/expect, enforced by the workspace
+// lints); tests legitimately use them.
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
 /// Crate-level error type. (Manual impl — no `thiserror` dependency.)
 #[derive(Debug)]
@@ -28,7 +25,7 @@ pub enum Error {
     NotApm,
     /// The buffer was shorter than the structure it was asked to hold.
     TooShort { need: usize, got: usize },
-    /// I/O failure while reading the disk image (from [`analyse_reader`]).
+    /// I/O failure while reading the disk image.
     Io(std::io::Error),
 }
 
@@ -122,35 +119,36 @@ impl ApplePartitionMap {
 /// signatures or if the buffer is too short.
 #[must_use]
 pub fn parse(data: &[u8]) -> Option<ApplePartitionMap> {
-    if data.len() < 512 || &data[0..2] != SIG_DDM {
+    if data.len() < 512 || data.get(0..2)? != SIG_DDM {
         return None;
     }
-    let block_size = u32::from(be16(&data[2..4]));
-    let device_block_count = be32(&data[4..8]);
+    let block_size = u32::from(be16(data.get(2..4)?));
+    let device_block_count = be32(data.get(4..8)?);
     let bs = block_size as usize;
     if bs == 0 {
         return None;
     }
     // First partition entry sits at block 1 and reports the map's entry count.
     let first = bs;
-    if data.len() < first + 8 || &data[first..first + 2] != SIG_PM {
+    if data.get(first..first + 2)? != SIG_PM {
         return None;
     }
-    let map_count = be32(&data[first + 4..first + 8]).min(MAX_PARTITIONS);
+    let map_count = be32(data.get(first + 4..first + 8)?).min(MAX_PARTITIONS);
 
     let mut partitions = Vec::new();
     for i in 0..map_count {
         let off = bs * (1 + i as usize);
-        if data.len() < off + 92 || &data[off..off + 2] != SIG_PM {
-            break;
-        }
+        let entry = match data.get(off..off + 92) {
+            Some(e) if &e[0..2] == SIG_PM => e,
+            _ => break,
+        };
         partitions.push(ApmPartition {
-            map_count: be32(&data[off + 4..off + 8]),
-            start_block: be32(&data[off + 8..off + 12]),
-            block_count: be32(&data[off + 12..off + 16]),
-            name: cstr(&data[off + 16..off + 48]),
-            type_name: cstr(&data[off + 48..off + 80]),
-            status: be32(&data[off + 88..off + 92]),
+            map_count: be32(&entry[4..8]),
+            start_block: be32(&entry[8..12]),
+            block_count: be32(&entry[12..16]),
+            name: cstr(&entry[16..48]),
+            type_name: cstr(&entry[48..80]),
+            status: be32(&entry[88..92]),
         });
     }
     Some(ApplePartitionMap {
@@ -166,9 +164,22 @@ fn cstr(bytes: &[u8]) -> String {
     bytes[..end].iter().map(|&b| b as char).collect()
 }
 
+/// Read a big-endian `u16` from the first two bytes of `b`; missing bytes read
+/// as zero, so this never panics on a short slice.
 fn be16(b: &[u8]) -> u16 {
-    u16::from_be_bytes([b[0], b[1]])
+    u16::from_be_bytes([
+        b.first().copied().unwrap_or(0),
+        b.get(1).copied().unwrap_or(0),
+    ])
 }
+
+/// Read a big-endian `u32` from the first four bytes of `b`; missing bytes read
+/// as zero, so this never panics on a short slice.
 fn be32(b: &[u8]) -> u32 {
-    u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+    u32::from_be_bytes([
+        b.first().copied().unwrap_or(0),
+        b.get(1).copied().unwrap_or(0),
+        b.get(2).copied().unwrap_or(0),
+        b.get(3).copied().unwrap_or(0),
+    ])
 }

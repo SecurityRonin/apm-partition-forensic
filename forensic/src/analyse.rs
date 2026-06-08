@@ -2,8 +2,9 @@
 
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 
+use apm::{parse, Error};
+
 use crate::findings::{Anomaly, AnomalyKind, ApmAnalysis};
-use crate::{parse, Error};
 
 /// Partition map entry signature (`PM`).
 const SIG_PM: &[u8; 2] = b"PM";

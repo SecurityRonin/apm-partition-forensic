@@ -1,7 +1,7 @@
-[![Crates.io](https://img.shields.io/crates/v/apm-forensic.svg)](https://crates.io/crates/apm-forensic)
-[![docs.rs](https://img.shields.io/docsrs/apm-forensic)](https://docs.rs/apm-forensic)
+[![Crates.io](https://img.shields.io/crates/v/apm-partition-forensic.svg)](https://crates.io/crates/apm-partition-forensic)
+[![docs.rs](https://img.shields.io/docsrs/apm-partition-forensic)](https://docs.rs/apm-partition-forensic)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/SecurityRonin/apm-forensic/actions/workflows/ci.yml/badge.svg)](https://github.com/SecurityRonin/apm-forensic/actions)
+[![CI](https://github.com/SecurityRonin/apm-partition-forensic/actions/workflows/ci.yml/badge.svg)](https://github.com/SecurityRonin/apm-partition-forensic/actions)
 [![Sponsor](https://img.shields.io/badge/sponsor-h4x0r-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/h4x0r)
 
 **Pure-Rust forensic Apple Partition Map (APM) reader — Driver Descriptor Map and partition entries from a byte buffer.**
@@ -22,17 +22,21 @@ Anomalies: none
 Highest severity: none (clean)
 ```
 
-`apm-forensic` is a **library** (use `apm_forensic::report::text_report` to render
-the above). For a ready-made command line that auto-detects the scheme and prints
-this for *any* disk, install the unified
+`apm-partition-forensic` is a **library**. For a ready-made command line that
+auto-detects the scheme and prints this for *any* disk, install the unified
 [`disk4n6`](https://github.com/SecurityRonin/disk-forensic) tool
 (`cargo install disk-forensic`).
+
+The workspace ships two crates: the pure parser
+[`apm-partition-core`](https://crates.io/crates/apm-partition-core) (imported as
+`apm`) and the forensic analyzer `apm-partition-forensic` (imported as
+`apm_forensic`) built on top of it.
 
 ## Install
 
 ```toml
 [dependencies]
-apm-forensic = "0.1"
+apm-partition-forensic = "0.4"
 ```
 
 ## Quick start
@@ -99,4 +103,4 @@ Part of the [Security Ronin](https://github.com/SecurityRonin) forensic toolkit.
 
 ---
 
-[Privacy Policy](https://securityronin.github.io/apm-forensic/privacy/) · [Terms of Service](https://securityronin.github.io/apm-forensic/terms/) · © 2026 Security Ronin Ltd
+[Privacy Policy](https://securityronin.github.io/apm-partition-forensic/privacy/) · [Terms of Service](https://securityronin.github.io/apm-partition-forensic/terms/) · © 2026 Security Ronin Ltd

@@ -1,8 +1,9 @@
 //! apm-forensic anomalies normalize onto the canonical `forensicnomicon::report`
 //! model via the `Observation` producer trait.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use forensicnomicon::report::{Observation, Source};
 use apm_forensic::{Anomaly, AnomalyKind};
+use forensicnomicon::report::{Observation, Source};
 
 #[test]
 fn anomaly_converts_to_a_canonical_finding() {
@@ -27,7 +28,8 @@ fn anomaly_evidence_carries_its_block_location() {
     });
     let ev = a.evidence();
     assert!(
-        ev.iter().any(|e| matches!(e.location, Some(Location::Lba(6200)))),
+        ev.iter()
+            .any(|e| matches!(e.location, Some(Location::Lba(6200)))),
         "out-of-bounds partition should surface its last_block as an Lba location: {ev:?}"
     );
 }

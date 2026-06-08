@@ -2,6 +2,7 @@
 //!
 //! Complements the `cargo fuzz` target (which only proves no-panic): these run
 //! on stable CI and assert *semantic* invariants over arbitrary input.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use proptest::prelude::*;
 use std::io::Cursor;

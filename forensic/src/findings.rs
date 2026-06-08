@@ -6,7 +6,7 @@
 
 use core::fmt;
 
-use crate::ApmPartition;
+use apm::ApmPartition;
 
 /// The canonical 5-level severity scale, shared across every `SecurityRonin`
 /// analyzer via [`forensicnomicon::report`].

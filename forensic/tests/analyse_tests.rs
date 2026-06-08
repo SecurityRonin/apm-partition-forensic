@@ -1,4 +1,5 @@
 //! Forensic analysis of the Apple Partition Map.
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use apm_forensic::{analyse, AnomalyKind, Error};
 

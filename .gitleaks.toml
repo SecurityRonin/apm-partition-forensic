@@ -1,0 +1,11 @@
+# gitleaks configuration — extends the default ruleset. There are no committed
+# secrets; this file exists so future false positives (e.g. CI cache keys, which
+# gitleaks' generic-api-key rule can flag on entropy alone) have a scoped home.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "CI cache keys are not secrets"
+regexes = [
+  '''corpus-apm-v[0-9]+''',
+]

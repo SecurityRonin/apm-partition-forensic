@@ -1,0 +1,37 @@
+[package]
+name = "apm-partition-forensic"
+version = "0.4.1"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+description = "Forensic anomaly auditor for Apple Partition Maps — map-count mismatch, overlapping/out-of-bounds partitions, residual entries, unmapped regions as graded report::Finding, built on apm-partition-core"
+repository = "https://github.com/SecurityRonin/apm-partition-forensic"
+homepage = "https://github.com/SecurityRonin/apm-partition-forensic"
+documentation = "https://docs.rs/apm-partition-forensic"
+readme = "README.md"
+keywords = ["forensics", "apple", "partition", "apm", "dfir"]
+categories = ["parser-implementations", "filesystem"]
+
+# The crates.io name `apm-forensic` is retired in favour of the uniform
+# `apm-partition-*` scheme; the import path stays `use apm_forensic::…` so
+# downstream code and tests are unaffected by the package rename.
+[lib]
+name = "apm_forensic"
+
+[dependencies]
+apm = { version = "0.4.1", path = "../core", package = "apm-partition-core" }
+serde = { version = "1", features = ["derive"], optional = true }
+# Knowledge layer (sibling repo): Apple Partition Map partition-type strings.
+forensicnomicon = "0.3.1"
+
+[features]
+default = []
+# Derive `serde::Serialize` on the analysis types for JSON report output.
+serde = ["dep:serde", "apm/serde", "forensicnomicon/serde"]
+
+[dev-dependencies]
+serde_json = "1"
+proptest = "1"
+
+[lints]
+workspace = true
