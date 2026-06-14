@@ -3,23 +3,23 @@
 # we publish the reader as `apm-partition-core` while keeping the ergonomic
 # import path `use apm::…` via `[lib] name = "apm"`.
 name = "apm-partition-core"
-version = "0.5.0"
-edition = "2021"
-rust-version = "1.85"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description = "Pure-Rust read-only Apple Partition Map (APM) reader — Driver Descriptor Map + partition entries (name, type, start, count) from a byte buffer"
-license = "MIT"
+license.workspace = true
 authors = ["Albert Hui <albert@securityronin.com>"]
 keywords = ["forensics", "apple", "partition", "apm", "dfir"]
 categories = ["parser-implementations", "filesystem"]
-repository = "https://github.com/SecurityRonin/apm-partition-forensic"
-homepage = "https://github.com/SecurityRonin/apm-partition-forensic"
+repository.workspace = true
+homepage.workspace = true
 documentation = "https://docs.rs/apm-partition-core"
 
 [lib]
 name = "apm"
 
 [dependencies]
-serde = { version = "1", features = ["derive"], optional = true }
+serde = { workspace = true, optional = true }
 
 [features]
 default = []
