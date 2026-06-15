@@ -3,7 +3,7 @@
 [![Crates.io: core](https://img.shields.io/crates/v/apm-partition-core.svg?label=apm-partition-core)](https://crates.io/crates/apm-partition-core)
 [![Crates.io: forensic](https://img.shields.io/crates/v/apm-partition-forensic.svg?label=apm-partition-forensic)](https://crates.io/crates/apm-partition-forensic)
 [![docs.rs](https://img.shields.io/docsrs/apm-partition-forensic)](https://docs.rs/apm-partition-forensic)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/SecurityRonin/apm-partition-forensic/actions/workflows/ci.yml/badge.svg)](https://github.com/SecurityRonin/apm-partition-forensic/actions)
 [![Sponsor](https://img.shields.io/badge/sponsor-h4x0r-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/h4x0r)
 
