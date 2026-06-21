@@ -10,6 +10,10 @@ homepage.workspace = true
 documentation = "https://docs.rs/apm-partition-forensic"
 keywords = ["forensics", "apple", "partition", "apm", "dfir"]
 categories = ["parser-implementations", "filesystem"]
+# Integration tests read fixtures from the repo-root `tests/data/` (outside this
+# member); the test files themselves add nothing to a published crate, so keep
+# them out of the tarball.
+exclude = ["/tests"]
 
 # The crates.io name `apm-forensic` is retired in favour of the uniform
 # `apm-partition-*` scheme; the import path stays `use apm_forensic::…` so

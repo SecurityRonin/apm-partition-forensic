@@ -6,7 +6,7 @@ use apm_partition_forensic::{analyse, AnomalyKind, Error};
 fn real_map() -> Vec<u8> {
     std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/tests/data/apm_map.bin"
+        "/../tests/data/apm_map.bin"
     ))
     .unwrap()
 }

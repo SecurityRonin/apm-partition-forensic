@@ -1,6 +1,7 @@
 // Apple Partition Map reader test, validated against REAL data:
-// tests/data/apm_map.bin is the first 2 KiB of an `hdiutil create -layout SPUD`
-// image (DDM + partition map, block size 512, Apple_partition_map + Apple_HFS).
+// ../../tests/data/apm_map.bin (repo-root tests/data, shared across members) is
+// the first 2 KiB of an `hdiutil create -layout SPUD` image (DDM + partition
+// map, block size 512, Apple_partition_map + Apple_HFS).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use apm_partition_forensic as apm;
@@ -8,7 +9,7 @@ use apm_partition_forensic as apm;
 fn real_map() -> Vec<u8> {
     std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/tests/data/apm_map.bin"
+        "/../tests/data/apm_map.bin"
     ))
     .unwrap()
 }
