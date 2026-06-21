@@ -56,7 +56,7 @@ These crates parse untrusted, attacker-controllable disk images:
 
 - **Panic-free** — no `unwrap`/`expect`/`panic!` in production code (hard `deny` via the workspace lints).
 - **Fuzzed** — `cargo fuzz` targets drive both `parse` and the full `analyse` audit pipeline with a "must not panic" invariant.
-- **Real-artifact validated** — checked against a real `hdiutil`-created APM (`Apple_partition_map` + `Apple_HFS`), not only synthetic fixtures.
+- **Real-artifact tested** — the reader is checked against a real `hdiutil`-created APM (`Apple_partition_map` + `Apple_HFS`), genuine Apple output rather than a hand-built byte pattern. It is graded by our own assertions (a Tier-2 check); the anomaly detectors are exercised by hand-built fixtures (Tier 3). No independent decoder (`pdisk` / `mmls` / `mac-fdisk`) cross-validates yet — the full state and the oracle gap are in [`docs/validation.md`](https://securityronin.github.io/apm-partition-forensic/validation/).
 - **No `unsafe`** — `unsafe_code = "forbid"`.
 
 ## Related
