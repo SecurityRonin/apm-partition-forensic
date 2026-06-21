@@ -8,9 +8,12 @@ known ground truth — never against fixtures we hand-encoded and then graded
 ourselves.
 
 This page records exactly which oracle and which corpus back each capability, so
-the claim is independently re-checkable. It states the current validation state
-honestly, including where independent-oracle coverage is **not yet in place** and
-which tools would close that gap.
+the claim is independently re-checkable. The **partition-map reader is now
+Tier 1**: two independent decoders (`mmls -t mac` and `pdisk -dump`) re-decode the
+same committed bytes and the test reconciles our parse against their actual output.
+The **anomaly auditor remains Tier 3** — its detectors are still exercised only by
+hand-built fixtures, and this page says so plainly rather than implying a stronger
+guarantee.
 
 ## How to read the evidence tiers
 
@@ -29,71 +32,88 @@ whether the data is "synthetic":
 
 ## Independent oracles
 
-No independent partition-map oracle is currently wired into the test suite. The
-one real artifact (below) is *produced* by Apple's `hdiutil` and graded by our
-own assertions — that makes it real engine output (Tier 2), but no second,
-independent decoder cross-checks the parse.
+The partition-map reader is cross-checked by **two independent decoders**, each a
+separate codebase that re-decodes the *same committed bytes* the crate parses.
+`forensic/tests/real_apm_oracle.rs` runs them at test time (env-gated: a missing
+binary skips that oracle cleanly) and asserts our parse matches their actual
+reported entry count, type, start block, and block count.
 
 | Oracle | Independent of us? | Validates | Tier | Status |
 |---|---|---|---|---|
-| — | — | — | — | **None wired in.** See the recommended oracles below. |
+| **`mmls -t mac`** (The Sleuth Kit 4.12.1) | Yes — independent C codebase | entry count, type, start block, block count over `apm_map_32k.bin` | 1 | **Wired in** (`crate_matches_mmls_oracle`) |
+| **`pdisk -dump`** (Apple, v0.9a2) | Yes — Apple's canonical APM editor | entry count, type, name, start block, block count over `apm_map_32k.bin` | 1 | **Wired in** (`crate_matches_pdisk_oracle`) |
 
-**Recommended oracles to add (the gap).** Each of these independently decodes an
-APM and would turn the reader's parse into a Tier-1 differential:
+The two oracles are additionally asserted to agree with **each other** on geometry
+(`oracles_agree_on_geometry`), so the differential compares like with like
+independent of this crate.
 
-- **`pdisk`** (Apple's partition editor; `pdisk -dump <image>`) — prints DDM block
-  size, every `pmPartName` / `pmPartType`, and `pmPyPartStart` / `pmPartBlkCnt`.
-  The canonical APM reference tool.
-- **`mac-fdisk`** (`mac-fdisk -l <image>`) — lists APM entries with type, name, and
-  block bounds; available in many Linux distributions (`mac-fdisk` / `pdisk`
-  packages).
-- **The Sleuth Kit `mmls`** (`mmls -t mac <image>`) — emits the APM partition table
-  (slot, start, length, description) from an independent C codebase; the natural
-  differential for partition bounds, overlap, and unmapped-gap findings.
-- **`hdiutil` as a *checker*** (`hdiutil pmap <image>` on macOS) — reads back the
-  partition map of an existing image, distinct from using `hdiutil create` merely
-  to *produce* the fixture.
+- **`mmls`** (`mmls -t mac <image>`) — emits the APM partition table (slot, start,
+  length, description) from an independent C codebase; the natural differential for
+  partition bounds, overlap, and unmapped-gap findings.
+- **`pdisk`** (`pdisk -dump <image>`) — prints DDM block size, every `pmPartName` /
+  `pmPartType`, and `pmPyPartStart` / `pmPartBlkCnt`. The canonical APM reference
+  tool. (It warns on stderr about unreadable *data* blocks beyond the 32 KiB head;
+  the partition-*map* decode on stdout is unaffected.)
 
-Adding any one of these as an env-gated differential (parse our entries, parse the
-oracle's dump of the *same bytes*, reconcile block size + per-entry
-name/type/start/count) would raise the reader from Tier 2 to Tier 1.
+Still-available oracles not yet wired in: **`mac-fdisk -l`** (Linux util-mac) and
+**`hdiutil pmap`** (macOS, reads back an existing image — distinct from using
+`hdiutil create` to *produce* the fixture). Either would add a third independent
+cross-check.
 
 ## Independent test corpora
 
 | Corpus | Source | Used for | License / redistribution |
 |---|---|---|---|
-| **`apm_map.bin`** (first 2 KiB of an `hdiutil create -layout SPUD` image) | Self-generated with Apple `hdiutil` on macOS (DDM + `Apple_partition_map` + `Apple_HFS`, block size 512) | Real-layout reader validation: block size, entry count, type names, HFS start block | Self-minted; committed (`forensic/tests/data/apm_map.bin`) |
+| **`apm_map_32k.bin`** (first 32 KiB of an 8 MiB `hdiutil create -size 8m -layout SPUD -fs HFS+` image) | Real Apple `hdiutil` output on macOS (DDM + `Apple_partition_map` + `Apple_HFS`, block size 512) | **Tier-1 differential** vs `mmls -t mac` + `pdisk -dump` (entry count, type, name, start, count) | Self-minted; committed (`tests/data/apm_map_32k.bin`) |
+| **`apm_map.bin`** (first 2 KiB of an `hdiutil create -layout SPUD` image) | Real Apple `hdiutil` output on macOS (DDM + `Apple_partition_map` + `Apple_HFS`, block size 512) | Reader/auditor real-data check in `map.rs` / `analyse_tests.rs` (block size, entry count, type names, HFS start block) | Self-minted; committed (`tests/data/apm_map.bin`) |
 
-This is **genuine Apple `hdiutil` output**, so the on-disk layout is real (not a
-byte-pattern we invented). But because we both generated it and wrote its expected
-answers, it is **Tier 2, not Tier 1** — no third party authored an independent
-answer key, and no independent tool re-decodes it. There is **no third-party APM
-corpus** (e.g. a CTF image, a NIST CFReDS Mac image, or a published forensic
-sample) in the suite yet; adding one with externally-established ground truth would
-be the clearest path to Tier 1.
+Both fixtures are **genuine Apple `hdiutil` output**, so the on-disk layout is real
+(not a byte-pattern we invented). The `apm_map_32k.bin` parse is now graded by two
+**independent** decoders re-reading the same bytes (Tier 1) — 32 KiB is the
+smallest head both `mmls` and `pdisk` fully decode (mmls probes the HFS partition's
+start area at sector 64; pdisk decodes the map from the first 2 KiB). The older
+`apm_map.bin` is still consumed by the reader/auditor real-data tests; its
+*expected values* there were authored here, so on its own it is Tier 2. There is
+**no third-party APM corpus** (e.g. a CTF image, a NIST CFReDS Mac image, or a
+published forensic sample) in the suite yet; adding one with an externally-authored
+answer key would be a further independent cross-check.
 
-> Provenance note: the fixture's generating command and hash are recorded inline in
-> `forensic/tests/map.rs:1-3`. There is **no `tests/data/README.md`** in this repo
-> yet; the fleet-wide machine index is `issen/docs/corpus-catalog.md`.
+> Provenance note: per-file provenance (source, verbatim generator command, MD5/
+> SHA256, consumers) lives in the repo's `tests/data/README.md`; the fleet-wide
+> machine index is `issen/docs/corpus-catalog.md`.
 
 ## Per-capability validation
 
-### Partition-map reader (DDM + entries) — Tier 2
+### Partition-map reader (DDM + entries) — Tier 1
 
-`forensic/tests/map.rs` parses the real `hdiutil`-generated `apm_map.bin` and
-asserts the structurally-derivable ground truth:
+`forensic/tests/real_apm_oracle.rs` re-decodes the committed `apm_map_32k.bin`
+with **two independent tools** and asserts the crate's parse matches each oracle's
+**actual reported values** (never values this crate computed):
 
-- `parses_real_apple_partition_map` (`forensic/tests/map.rs:16`) — block size 512,
-  exactly two entries, `Apple_partition_map` then `Apple_HFS`, HFS named
-  `disk image` starting at block 64.
-- `finds_hfs_partition` (`forensic/tests/map.rs:27`) — `hfs_partition()` locates the
-  `Apple_HFS` slice (start block 64).
-- `non_apm_is_none` (`forensic/tests/map.rs:33`) — non-APM input (zeroed and
-  too-short buffers) parses to `None`, never a false-positive map.
+- `crate_matches_mmls_oracle` — runs `mmls -t mac` (The Sleuth Kit), parses its
+  partition rows, and reconciles entry count, type, start block, and block count
+  against `apm::parse`.
+- `crate_matches_pdisk_oracle` — runs `pdisk -dump` (Apple), parses its rows, and
+  reconciles the same fields.
+- `oracles_agree_on_geometry` — asserts `mmls` and `pdisk` agree with each other,
+  guarding the differential independent of this crate.
 
-The layout is real Apple output, but the expected values were authored here and no
-independent decoder cross-checks them — hence **Tier 2**. An `mmls`/`pdisk`
-differential on these same bytes would lift it to Tier 1.
+The reconciled ground truth (both oracles concur): block size 512, two entries —
+`Apple_partition_map` (start block 1, 63 blocks) and `Apple_HFS` (name
+`disk image`, start block 64, 16320 blocks). Each test is **env-gated**: a host
+without that oracle binary skips the test cleanly. Because an independent codebase
+authored the answer key by re-decoding the same bytes, this is **Tier 1**.
+
+The original `forensic/tests/map.rs` reader assertions over `apm_map.bin` remain as
+real-data regression checks (their expected values are authored here, so on their
+own those are Tier 2):
+
+- `parses_real_apple_partition_map` — block size 512, exactly two entries,
+  `Apple_partition_map` then `Apple_HFS`, HFS named `disk image` starting at
+  block 64.
+- `finds_hfs_partition` — `hfs_partition()` locates the `Apple_HFS` slice.
+- `non_apm_is_none` — non-APM input (zeroed and too-short buffers) parses to
+  `None`, never a false-positive map.
 
 ### Anomaly auditor (severity-graded findings) — Tier 3
 
@@ -139,6 +159,10 @@ guarantee (independent of the correctness tier above).
 All tests are committed and always-on (no large external image is required):
 
 ```bash
+# Tier-1 differential: crate parse vs mmls -t mac AND pdisk -dump on the same bytes
+# (env-gated; skips an oracle cleanly if its binary is absent)
+cargo test -p apm-partition-forensic --test real_apm_oracle -- --nocapture
+
 # Reader vs the real hdiutil-created APM (committed fixture)
 cargo test -p apm-partition-forensic --test map
 
@@ -158,17 +182,17 @@ cargo +nightly fuzz run fuzz_parse
 cargo +nightly fuzz run fuzz_forensic
 ```
 
-To close the oracle gap, generate a fresh APM and diff our parse against an
-independent decoder of the *same bytes*:
+To regenerate the committed Tier-1 fixture from scratch and re-confirm the oracle
+agreement on a freshly minted APM:
 
 ```bash
-# Produce a real APM image (macOS)
-hdiutil create -size 10m -layout SPUD -fs HFS+ /tmp/apm.dmg
+# Produce a real APM image (macOS) and slice the 32 KiB head both oracles decode
+hdiutil create -size 8m -layout SPUD -fs HFS+ -volname OracleTest /tmp/apm_oracle
+dd if=/tmp/apm_oracle.dmg of=tests/data/apm_map_32k.bin bs=1024 count=32
 
-# Independent decode (any one of these is an oracle for a differential test)
-pdisk /tmp/apm.dmg -dump          # Apple partition editor
-mmls -t mac /tmp/apm.dmg          # The Sleuth Kit
-mac-fdisk -l /tmp/apm.dmg         # Linux util-mac
+# Independent decode of the same bytes (the answer key the differential reconciles)
+pdisk tests/data/apm_map_32k.bin -dump   # Apple partition editor
+mmls  -t mac tests/data/apm_map_32k.bin  # The Sleuth Kit
 ```
 
 ## Coverage & fuzzing as backstops
