@@ -10,7 +10,31 @@
 use std::sync::Arc;
 
 use forensic_vfs::adapters::SubRange;
-use forensic_vfs::{DynSource, VfsError, VfsResult, VolumeDesc, VolumeScheme, VolumeSystem};
+use forensic_vfs::{
+    DynSource, ImageSource, VfsError, VfsResult, VolumeDesc, VolumeKind, VolumeScheme, VolumeSystem,
+};
+
+/// Cap on the head read handed to the parser: the DDM + partition map is a
+/// handful of blocks, so 1 MiB bounds the read against a hostile parent while
+/// covering any real APM.
+const APM_MAP_CAP: u64 = 1024 * 1024;
+
+/// Fill `buf` from `src` starting at `off`, tolerating short reads and stopping
+/// at EOF (any unfilled tail stays zeroed — the parser bounds-checks its slices).
+fn fill(src: &dyn ImageSource, mut off: u64, mut buf: &mut [u8]) -> VfsResult<()> {
+    while !buf.is_empty() {
+        let n = src.read_at(off, buf)?;
+        if n == 0 {
+            break; // EOF
+        }
+        off = off.saturating_add(n as u64);
+        let Some(rest) = buf.get_mut(n..) else {
+            break; // cov:unreachable: read_at returns n <= buf.len()
+        };
+        buf = rest;
+    }
+    Ok(())
+}
 
 /// An APM partition scheme over one parent byte source.
 pub struct ApmVolumes {
@@ -20,12 +44,32 @@ pub struct ApmVolumes {
 
 impl ApmVolumes {
     /// Parse the APM at the head of `parent` and build the volume table.
+    /// Returns [`VfsError::Unsupported`] if the head is not a valid APM (no
+    /// Driver Descriptor Map `ER` / partition `PM` signature).
     pub fn open(parent: DynSource) -> VfsResult<Self> {
-        // RED: not implemented yet — no partitions parsed.
-        Ok(Self {
-            parent,
-            volumes: Vec::new(),
-        })
+        let want = parent.len().min(APM_MAP_CAP);
+        let mut head = vec![0u8; want as usize];
+        fill(&*parent, 0, &mut head)?;
+        let map = crate::parse(&head).ok_or(VfsError::Unsupported {
+            layer: "ApmVolumes",
+            scheme: "APM".to_string(),
+        })?;
+
+        let block_size = u64::from(map.block_size);
+        let volumes = map
+            .partitions
+            .iter()
+            .enumerate()
+            .map(|(i, p)| VolumeDesc {
+                index: i,
+                kind: VolumeKind::Partition,
+                start: u64::from(p.start_block).saturating_mul(block_size),
+                len: u64::from(p.block_count).saturating_mul(block_size),
+                type_hint: (!p.type_name.is_empty()).then(|| p.type_name.clone()),
+                label: (!p.name.is_empty()).then(|| p.name.clone()),
+            })
+            .collect();
+        Ok(Self { parent, volumes })
     }
 }
 
