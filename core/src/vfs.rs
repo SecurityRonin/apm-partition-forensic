@@ -1,7 +1,7 @@
 //! `forensic-vfs` [`VolumeSystem`] adapter for the Apple Partition Map, behind
 //! the `vfs` feature.
 //!
-//! Wraps a parent [`ImageSource`](forensic_vfs::ImageSource) and exposes the
+//! Wraps a parent [`ImageSource`] and exposes the
 //! disk's APM partitions as [`VolumeDesc`]s, each openable as a [`SubRange`]
 //! byte window. Partition geometry is in the map's own block units
 //! ([`ApplePartitionMap::block_size`](crate::ApplePartitionMap), from the Driver
@@ -147,5 +147,38 @@ mod tests {
     fn open_volume_out_of_range_errors_not_panics() {
         let vs = ApmVolumes::open(real_apm()).expect("parse");
         assert!(vs.open_volume(99).is_err());
+    }
+
+    /// A source that reports a larger `len()` than it can actually serve — the
+    /// `fill` loop must stop at the short read (EOF) instead of looping forever
+    /// or over-reading, and still parse the APM that is present.
+    #[test]
+    fn fill_stops_at_eof_when_parent_overreports_len() {
+        use forensic_vfs::{ImageSource, VfsResult};
+
+        struct OverreportingSource {
+            bytes: Vec<u8>,
+        }
+        impl ImageSource for OverreportingSource {
+            fn len(&self) -> u64 {
+                // Claim far more than we hold, so `fill` requests past the tail.
+                self.bytes.len() as u64 + 4096
+            }
+            fn read_at(&self, offset: u64, buf: &mut [u8]) -> VfsResult<usize> {
+                let off = offset as usize;
+                if off >= self.bytes.len() {
+                    return Ok(0); // EOF — the branch `fill` must honour.
+                }
+                let n = buf.len().min(self.bytes.len() - off);
+                buf[..n].copy_from_slice(&self.bytes[off..off + n]);
+                Ok(n)
+            }
+        }
+
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/data/apm_map_32k.bin");
+        let bytes = std::fs::read(path).expect("read real APM fixture");
+        let src: DynSource = Arc::new(OverreportingSource { bytes });
+        let vs = ApmVolumes::open(src).expect("APM still parses despite short tail");
+        assert_eq!(vs.volumes().len(), 2, "map + HFS partitions");
     }
 }
