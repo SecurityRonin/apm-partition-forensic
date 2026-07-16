@@ -17,6 +17,9 @@
 // lints); tests legitimately use them.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
+#[cfg(feature = "vfs")]
+pub mod vfs;
+
 /// Crate-level error type. (Manual impl — no `thiserror` dependency.)
 #[derive(Debug)]
 pub enum Error {
