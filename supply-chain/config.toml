@@ -26,14 +26,6 @@ audit-as-crates-io = false
 version = "1.0.104"
 criteria = "safe-to-run"
 
-[[exemptions.apm-partition-core]]
-version = "0.6.2"
-criteria = "safe-to-deploy"
-
-[[exemptions.apm-partition-forensic]]
-version = "0.6.2"
-criteria = "safe-to-deploy"
-
 [[exemptions.autocfg]]
 version = "1.5.1"
 criteria = "safe-to-run"
@@ -53,22 +45,6 @@ criteria = "safe-to-run"
 [[exemptions.fastrand]]
 version = "2.4.1"
 criteria = "safe-to-run"
-
-[[exemptions.forensic-vfs]]
-version = "0.3.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.forensicnomicon]]
-version = "1.0.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.forensicnomicon-core]]
-version = "1.2.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.forensicnomicon-data]]
-version = "1.0.0"
-criteria = "safe-to-deploy"
 
 [[exemptions.getrandom]]
 version = "0.3.4"
@@ -177,10 +153,6 @@ criteria = "safe-to-deploy"
 [[exemptions.serde_json]]
 version = "1.0.150"
 criteria = "safe-to-run"
-
-[[exemptions.state-history-forensic]]
-version = "0.1.0"
-criteria = "safe-to-deploy"
 
 [[exemptions.syn]]
 version = "2.0.117"
